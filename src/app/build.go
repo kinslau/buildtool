@@ -36,7 +36,7 @@ func main() {
 	}
 
 	deleteFiles(appName)
-	syncGit(baseDir)
+	syncGit(baseDir, sourceCommit)
 	mvnPackage(baseDir)
 
 	var diffFiles = getSourceDiffFiles(appName, sourceCommit, targetCommit, baseDir)
@@ -46,7 +46,7 @@ func main() {
 
 }
 
-func syncGit(baseDir string) {
+func syncGit(baseDir string, sourceCommit string) {
 	{
 		log.Println("------GIT仓库检查------")
 		cmd := exec.Command("git", "status")
@@ -62,7 +62,7 @@ func syncGit(baseDir string) {
 
 	{
 		log.Println("------切换分支------")
-		cmd := exec.Command("git", "checkout", "lb-pkg")
+		cmd := exec.Command("git", "checkout", sourceCommit)
 		cmd.Dir = baseDir
 		result, err := cmd.Output()
 		if err != nil {
