@@ -30,6 +30,7 @@ func main() {
 	targetDir := config["targetDir"]
 	appName := config["appName"]
 
+	log.Println(sourceCommit)
 	if sourceCommit == "" || targetCommit == "" || baseDir == "" {
 		fmt.Println("读取配置文件失败")
 		panic("读取配置文件失败")
@@ -61,19 +62,7 @@ func syncGit(baseDir string, sourceCommit string) {
 	}
 
 	{
-		log.Println("------切换分支------")
-		cmd := exec.Command("git", "checkout", sourceCommit)
-		cmd.Dir = baseDir
-		result, err := cmd.Output()
-		if err != nil {
-			text := err.Error()
-			fmt.Println(err)
-			panic("切换分支失败" + text)
-		}
-		fmt.Println(string(result))
-	}
 
-	{
 		log.Println("------拉取最新分支------")
 		cmd := exec.Command("git", "fetch", "--all")
 		cmd.Dir = baseDir
@@ -83,12 +72,50 @@ func syncGit(baseDir string, sourceCommit string) {
 			fmt.Println(err)
 			panic("拉取最新分支失败" + text)
 		}
+
+		fmt.Println(string(result))
+
+	}
+
+	var currentBranch string
+
+	{
+		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+		cmd.Dir = baseDir
+		result, err := cmd.Output()
+		if err != nil {
+			text := err.Error()
+			panic("切换分支失败" + text)
+		}
+		currentBranch = string(result)
+		fmt.Println("当前分支:" + currentBranch)
+	}
+
+	{
+		log.Println(sourceCommit, currentBranch)
+		if strings.EqualFold(sourceCommit, currentBranch) {
+			log.Println("无需切换分支")
+			return
+		} else {
+			log.Println("------切换分支------")
+		}
+
+		cmd := exec.Command("git", "checkout", "-b", sourceCommit, "origin/"+sourceCommit)
+		cmd.Dir = baseDir
+		result, err := cmd.Output()
+		if err != nil {
+			text := err.Error()
+			fmt.Println(text)
+			garbledStr := ConvertByte2String(result, GB18030)
+			fmt.Println(garbledStr)
+			panic("切换分支失败" + garbledStr)
+		}
 		fmt.Println(string(result))
 	}
 
 	{
 		log.Println("------同步代码------")
-		cmd := exec.Command("git", "pull", "origin", "lb-pkg")
+		cmd := exec.Command("git", "pull", "origin", sourceCommit)
 		cmd.Dir = baseDir
 		result, err := cmd.Output()
 		if err != nil {
