@@ -21,7 +21,6 @@ const (
 	GB18030 = Charset("GB18030")
 )
 
-var currentBranch string
 var sourceCommit string
 var targetCommit string
 var baseDir string
@@ -122,29 +121,7 @@ func showAllBranch() {
 
 }
 
-func getCurrentBranch() {
-
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = baseDir
-	result, err := cmd.Output()
-	if err != nil {
-		text := err.Error()
-		panic("获取当前分支失败" + text)
-	}
-	currentBranch = string(result)
-	currentBranch = strings.Replace(currentBranch, "\n", "", -1)
-	fmt.Println("当前分支:" + currentBranch)
-
-}
-
 func syncGit() {
-
-	// {
-	// 	if strings.EqualFold(sourceCommit, currentBranch) {
-	// 		log.Println("无需切换分支")
-	// 		return
-	// 	}
-	// }
 
 	if exsitLocal {
 		fmt.Println("------已存在本地分支，本地分支切换--------")
