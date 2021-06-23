@@ -1,5 +1,8 @@
-module example.com/m/v2
+module buildTool
 
 go 1.15
 
-require golang.org/x/text v0.3.6
+require (
+	github.com/gin-gonic/gin v1.7.2
+	golang.org/x/text v0.3.6
+)

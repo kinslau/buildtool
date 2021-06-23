@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"bufio"
@@ -27,7 +27,7 @@ var baseDir string
 var targetDir string
 var appName string
 
-func main() {
+func Build() {
 
 	config := InitConfig("config.properties")
 	sourceCommit = config["sourceCommit"]
