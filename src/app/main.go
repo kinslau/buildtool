@@ -7,8 +7,10 @@ import (
 )
 
 func main() {
-	web()
-	hl.Build()
+	// web()
+	hl.Connect()
+	// hl.Build()
+
 }
 
 func web() {
