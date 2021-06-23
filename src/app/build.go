@@ -44,8 +44,10 @@ func main() {
 	}
 
 	deleteFiles(appName)
-	// fetch()
-	// syncGit()
+
+	fetch()
+	showAllBranch()
+	syncGit()
 	mvnPackageNew()
 
 	var diffFiles = getSourceDiffFiles(appName)
@@ -86,17 +88,37 @@ func fetch() {
 	}
 }
 
-func checkout(branch string) {
-	getCurrentBranch()
+var exsitLocal bool
+
+func showAllBranch() {
+
+	var branchs []string
+	{
+		log.Println("------获取所有分支------")
+		cmd := exec.Command("git", "branch")
+		cmd.Dir = baseDir
+		result, err := cmd.Output()
+		if err != nil {
+			text := err.Error()
+			fmt.Println(err)
+			panic("GIT仓库检查失败" + text)
+		}
+		tempStr := string(result)
+		branchs = strings.Split(tempStr, "%q\n")
+		fmt.Println(branchs)
+
+	}
 
 	{
-		err := execCommand("git", "checkout", "master")
-		if err {
-			panic("切换分支失败")
+
+		for _, branch := range branchs {
+			if strings.Contains(branch, sourceCommit) {
+				exsitLocal = true
+				break
+			}
 		}
+
 	}
-	getCurrentBranch()
-	deleteBranch(branch)
 
 }
 
@@ -115,31 +137,33 @@ func getCurrentBranch() {
 
 }
 
-func deleteBranch(branch string) {
-	err := execCommand("git", "branch", "-d", branch)
-	if err {
-		panic("切换分支失败")
-	}
-}
-
 func syncGit() {
 
-	{
-		if strings.EqualFold(sourceCommit, currentBranch) {
-			log.Println("无需切换分支")
-			return
-		}
+	// {
+	// 	if strings.EqualFold(sourceCommit, currentBranch) {
+	// 		log.Println("无需切换分支")
+	// 		return
+	// 	}
+	// }
 
-		err := execCommand("git", "checkout", "-b", sourceCommit)
-		if err {
+	if exsitLocal {
+		fmt.Println("------已存在本地分支，本地分支切换--------")
+		success := execCommand("git", "checkout", sourceCommit)
+		if !success {
+			panic("切换分支失败")
+		}
+	} else {
+		fmt.Println("------不存在本地分支，远程分支切换--------")
+		success := execCommand("git", "checkout", "-b", sourceCommit, "origin/"+sourceCommit)
+		if !success {
 			panic("切换分支失败")
 		}
 	}
 
 	{
 		log.Println("------同步代码------")
-		err := execCommand("git", "pull", "origin", sourceCommit)
-		if err {
+		success := execCommand("git", "pull", "origin", sourceCommit)
+		if !success {
 			panic("同步代码失败")
 		}
 	}
