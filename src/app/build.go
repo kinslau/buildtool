@@ -21,14 +21,21 @@ const (
 	GB18030 = Charset("GB18030")
 )
 
+var currentBranch string
+var sourceCommit string
+var targetCommit string
+var baseDir string
+var targetDir string
+var appName string
+
 func main() {
 
 	config := InitConfig("config.properties")
-	sourceCommit := config["sourceCommit"]
-	targetCommit := config["targetCommit"]
-	baseDir := config["baseDir"]
-	targetDir := config["targetDir"]
-	appName := config["appName"]
+	sourceCommit = config["sourceCommit"]
+	targetCommit = config["targetCommit"]
+	baseDir = config["baseDir"]
+	appName = config["appName"]
+	targetDir = baseDir + "/target/" + appName
 
 	log.Println(sourceCommit)
 	if sourceCommit == "" || targetCommit == "" || baseDir == "" {
@@ -37,17 +44,18 @@ func main() {
 	}
 
 	deleteFiles(appName)
-	syncGit(baseDir, sourceCommit)
-	mvnPackage(baseDir)
+	// fetch()
+	// syncGit()
+	mvnPackageNew()
 
-	var diffFiles = getSourceDiffFiles(appName, sourceCommit, targetCommit, baseDir)
-	var targetFiles = getTargetFiles(diffFiles, targetDir)
+	var diffFiles = getSourceDiffFiles(appName)
+	var targetFiles = getTargetFiles(diffFiles)
 	createFile(appName+"_target.txt", targetFiles)
-	createTargetFiles(appName, targetFiles, targetDir)
+	createTargetFiles(appName, targetFiles)
 
 }
 
-func syncGit(baseDir string, sourceCommit string) {
+func fetch() {
 	{
 		log.Println("------GIT仓库检查------")
 		cmd := exec.Command("git", "status")
@@ -76,77 +84,74 @@ func syncGit(baseDir string, sourceCommit string) {
 		fmt.Println(string(result))
 
 	}
+}
 
-	var currentBranch string
-
-	{
-		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-		cmd.Dir = baseDir
-		result, err := cmd.Output()
-		if err != nil {
-			text := err.Error()
-			panic("切换分支失败" + text)
-		}
-		currentBranch = string(result)
-		fmt.Println("当前分支:" + currentBranch)
-	}
+func checkout(branch string) {
+	getCurrentBranch()
 
 	{
-		log.Println(sourceCommit, currentBranch)
-		if strings.EqualFold(sourceCommit, currentBranch) {
-			log.Println("无需切换分支")
-			return
-		} else {
-			log.Println("------切换分支------")
+		err := execCommand("git", "checkout", "master")
+		if err {
+			panic("切换分支失败")
 		}
-
-		cmd := exec.Command("git", "checkout", "-b", sourceCommit, "origin/"+sourceCommit)
-		cmd.Dir = baseDir
-		result, err := cmd.Output()
-		if err != nil {
-			text := err.Error()
-			fmt.Println(text)
-			garbledStr := ConvertByte2String(result, GB18030)
-			fmt.Println(garbledStr)
-			panic("切换分支失败" + garbledStr)
-		}
-		fmt.Println(string(result))
 	}
-
-	{
-		log.Println("------同步代码------")
-		cmd := exec.Command("git", "pull", "origin", sourceCommit)
-		cmd.Dir = baseDir
-		result, err := cmd.Output()
-		if err != nil {
-			text := err.Error()
-			fmt.Println(err)
-			panic("同步代码失败" + text)
-		}
-
-		fmt.Println(string(result))
-	}
+	getCurrentBranch()
+	deleteBranch(branch)
 
 }
 
-func mvnPackage(baseDir string) {
-	log.Println("------MAVEN开始构建------")
-	cmd := exec.Command("mvn", "clean", "install", "-Psit1")
+func getCurrentBranch() {
+
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = baseDir
 	result, err := cmd.Output()
 	if err != nil {
 		text := err.Error()
-		fmt.Println(err)
-		panic("MAVEN构建失败" + text)
+		panic("获取当前分支失败" + text)
 	}
+	currentBranch = string(result)
+	currentBranch = strings.Replace(currentBranch, "\n", "", -1)
+	fmt.Println("当前分支:" + currentBranch)
 
-	garbledStr := ConvertByte2String(result, GB18030)
-	fmt.Println(garbledStr)
-
-	log.Println("------MAVEN构建完成------")
 }
 
-func getSourceDiffFiles(appName string, sourceCommit string, targetCommit string, baseDir string) []string {
+func deleteBranch(branch string) {
+	err := execCommand("git", "branch", "-d", branch)
+	if err {
+		panic("切换分支失败")
+	}
+}
+
+func syncGit() {
+
+	{
+		if strings.EqualFold(sourceCommit, currentBranch) {
+			log.Println("无需切换分支")
+			return
+		}
+
+		err := execCommand("git", "checkout", "-b", sourceCommit)
+		if err {
+			panic("切换分支失败")
+		}
+	}
+
+	{
+		log.Println("------同步代码------")
+		err := execCommand("git", "pull", "origin", sourceCommit)
+		if err {
+			panic("同步代码失败")
+		}
+	}
+
+}
+
+func mvnPackageNew() {
+
+	execCommand("mvn", "clean", "install", "-Pprod")
+}
+
+func getSourceDiffFiles(appName string) []string {
 	var diffFiles = make([]string, 0)
 	cmd := exec.Command("git", "diff", sourceCommit, targetCommit, "--name-only")
 	cmd.Dir = baseDir
@@ -154,7 +159,6 @@ func getSourceDiffFiles(appName string, sourceCommit string, targetCommit string
 	if err != nil {
 		text := err.Error()
 		fmt.Println(err)
-
 		panic("查找GIT差异文件失败" + text)
 	}
 
@@ -172,7 +176,7 @@ func getSourceDiffFiles(appName string, sourceCommit string, targetCommit string
 	return diffFiles
 }
 
-func getTargetFiles(diffFiles []string, targetDir string) []string {
+func getTargetFiles(diffFiles []string) []string {
 	var targetFiles = make([]string, 0)
 	for _, f := range diffFiles {
 
@@ -216,7 +220,7 @@ func getTargetFiles(diffFiles []string, targetDir string) []string {
 	return targetFiles
 }
 
-func createTargetFiles(appName string, targetFiles []string, targetDir string) {
+func createTargetFiles(appName string, targetFiles []string) {
 	for _, text := range targetFiles {
 		pathText := text
 		pathText = strings.Replace(pathText, "/", `\`, -1)
@@ -379,4 +383,31 @@ func ConvertByte2String(byte []byte, charset Charset) string {
 		str = string(byte)
 	}
 	return str
+}
+
+func execCommand(commandName string, arg ...string) bool {
+	cmd := exec.Command(commandName, arg...)
+	cmd.Dir = baseDir
+	//显示运行的命令
+	fmt.Println(cmd.Args)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	cmd.Start()
+	reader := bufio.NewReader(stdout)
+	//实时循环读取输出流中的一行内容
+	for {
+		line, err2 := reader.ReadString('\n')
+		if err2 != nil || io.EOF == err2 {
+			break
+		}
+		var data []byte = []byte(line)
+		garbledStr := ConvertByte2String(data, GB18030)
+		fmt.Print(garbledStr)
+	}
+	cmd.Wait()
+	return true
 }
