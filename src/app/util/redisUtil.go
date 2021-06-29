@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -27,6 +28,8 @@ func initClient() (err error) {
 }
 
 func Connect() {
+
+	log.Println("redis conneting")
 
 	ctx = context.Background()
 	if err := initClient(); err != nil {

@@ -1,15 +1,19 @@
 package main
 
 import (
-	hl "buildTool/src/app/util"
+	bl "buildTool/src/app/base"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+
+	//hl.Connect()
 	// web()
-	hl.Connect()
 	// hl.Build()
+	// hl.MyTest()
+	// hl.TestPoint()
+	bl.TestSlice()
 
 }
 
