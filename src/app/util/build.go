@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -125,13 +126,13 @@ func syncGit() {
 
 	if exsitLocal {
 		fmt.Println("------已存在本地分支，本地分支切换--------")
-		success := execCommand("git", "checkout", sourceCommit)
+		success := ExecCommand("git", "checkout", sourceCommit)
 		if !success {
 			panic("切换分支失败")
 		}
 	} else {
 		fmt.Println("------不存在本地分支，远程分支切换--------")
-		success := execCommand("git", "checkout", "-b", sourceCommit, "origin/"+sourceCommit)
+		success := ExecCommand("git", "checkout", "-b", sourceCommit, "origin/"+sourceCommit)
 		if !success {
 			panic("切换分支失败")
 		}
@@ -139,7 +140,7 @@ func syncGit() {
 
 	{
 		log.Println("------同步代码------")
-		success := execCommand("git", "pull", "origin", sourceCommit)
+		success := ExecCommand("git", "pull", "origin", sourceCommit)
 		if !success {
 			panic("同步代码失败")
 		}
@@ -149,7 +150,7 @@ func syncGit() {
 
 func mvnPackageNew() {
 
-	execCommand("mvn", "clean", "install", "-Pprod")
+	ExecCommand("mvn", "clean", "install", "-Pprod")
 }
 
 func getSourceDiffFiles(appName string) []string {
@@ -386,7 +387,7 @@ func ConvertByte2String(byte []byte, charset Charset) string {
 	return str
 }
 
-func execCommand(commandName string, arg ...string) bool {
+func ExecCommand(commandName string, arg ...string) bool {
 	cmd := exec.Command(commandName, arg...)
 	cmd.Dir = baseDir
 	//显示运行的命令
@@ -411,4 +412,19 @@ func execCommand(commandName string, arg ...string) bool {
 	}
 	cmd.Wait()
 	return true
+}
+
+func ExecCommandResult(commandName string, arg ...string) (string, error) {
+
+	cmd := exec.Command(commandName, arg...)
+	fmt.Println(cmd.Args)
+	result, err := cmd.Output()
+	if err != nil {
+		text := err.Error()
+		fmt.Println(err)
+		return "", errors.New(text)
+
+	}
+	tempStr := string(result)
+	return tempStr, nil
 }

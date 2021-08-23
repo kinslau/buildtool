@@ -2,6 +2,8 @@ package main
 
 import (
 	m1 "buildTool/src/app/util"
+	"strings"
+
 	"math/rand"
 	"time"
 
@@ -32,6 +34,14 @@ func testLog() {
 
 }
 
+func getResult(num string, path string) string {
+	result, err := m1.ExecCommandResult("rg", "-No", "--column", num, "./圆周率小数点后24900000001到25000000000一共1亿位.txt")
+	if err != nil {
+		return ""
+	}
+	return result
+}
+
 func web() {
 
 	gin.SetMode(gin.DebugMode)
@@ -39,12 +49,16 @@ func web() {
 
 	r.GET("/", func(c *gin.Context) {
 
-		go testLog()
+		args := c.Query("args")
+		result := getResult(args, "")
+		logger.Info(result)
+		var list []string
+		list = strings.Split(result, "\n")
+
 		c.JSON(200, gin.H{
-			"message": "pong",
-			"item":    "",
+			"message": list,
 		})
 	})
-	r.Run()
+	r.Run(":80")
 
 }
