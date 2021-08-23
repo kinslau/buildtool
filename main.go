@@ -52,8 +52,7 @@ func web() {
 		args := c.Query("args")
 		result := getResult(args, "")
 		logger.Info(result)
-		var list []string
-		list = strings.Split(result, "\n")
+		list := strings.Split(result, "\n")
 
 		c.JSON(200, gin.H{
 			"message": list,
