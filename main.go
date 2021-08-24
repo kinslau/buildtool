@@ -2,7 +2,6 @@ package main
 
 import (
 	m1 "buildTool/src/app/util"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"strings"
@@ -38,7 +37,7 @@ func testLog() {
 }
 
 func getResult(num string, path string) string {
-	result, err := m1.ExecCommandResult("rg", "-No", "--column", num, "./圆周率小数点后24900000001到25000000000一共1亿位.txt")
+	result, err := m1.ExecCommandResult("rg", "-No", "--column", num, "./圆周率小数点后00000000001到00100000000一共1亿位.txt")
 	if err != nil {
 		return ""
 	}
@@ -50,18 +49,6 @@ func web() {
 	gin.SetMode(gin.DebugMode)
 	r := gin.Default()
 
-	r.GET("/", func(c *gin.Context) {
-
-		args := c.Query("args")
-		result := getResult(args, "")
-		logger.Info(result)
-		list := strings.Split(result, "\n")
-
-		c.JSON(200, gin.H{
-			"message": list,
-		})
-	})
-
 	r.POST("/wx/token", func(c *gin.Context) {
 
 		data, err := c.GetRawData()
@@ -70,22 +57,30 @@ func web() {
 		}
 
 		xmlStr := string(data)
-		logger.Info("请求body内容为:", xmlStr)
 
 		result := WXRequest{}
 		xml.Unmarshal([]byte(xmlStr), &result)
 
-		num := result.Content.Text
-		content := getResult(num, "")
+		logger.Info("ToUserName:", result.ToUserName.Text)
+		logger.Info("FromUserName:", result.FromUserName.Text)
+		logger.Info("content:", result.Content.Text)
+
+		content := getResult(result.Content.Text, "")
+		list := strings.Split(content, "\n")
+		index := "0"
+		if len(list) > 1 {
+			index = strings.Split(list[0], ":")[0]
+		}
+
+		text := "你的生日" + result.Content.Text + "出现在圆周率π的第" + index + "位。(第0位表示在π的前2亿个数字内找不到)"
 
 		msg := WX{
 			ToUserName:   CDATA{result.FromUserName.Text},
 			FromUserName: CDATA{result.ToUserName.Text},
 			CreateTime:   int(time.Now().Unix()),
 			MsgType:      CDATA{"text"},
-			Content:      CDATA{content},
+			Content:      CDATA{text},
 		}
-
 		c.XML(200, msg)
 
 	})
@@ -95,25 +90,22 @@ func web() {
 		c.String(200, echostr)
 	})
 
+	r.GET("/wx/query", func(c *gin.Context) {
+		birthday := c.Query("birthday")
+
+		content := getResult(birthday, "")
+		list := strings.Split(content, "\n")
+		index := "0"
+		if len(list) > 1 {
+			index = strings.Split(list[0], ":")[0]
+		}
+
+		text := "你的生日" + birthday + "出现在圆周率π的第" + index + "位。(第0位表示在π的前2亿个数字内找不到)"
+		c.String(200, text)
+	})
+
 	r.Run(":80")
 
-}
-
-func getAccess_token() string {
-
-	appid := "wx6a83652b8ce66170"
-	APPSECRET := "e4a6561ab0910b4e2c0759e329e244d7"
-	result := m1.Get("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=" + appid + "&secret=" + APPSECRET)
-
-	// an arbitrary json string
-	var jsonMap map[string]interface{}
-
-	json.Unmarshal([]byte(result), &jsonMap)
-
-	logger.Info(jsonMap)
-	// prints: map[foo:map[baz:[1 2 3]]]
-
-	return result
 }
 
 type WX struct {
