@@ -6,3 +6,9 @@ type RedisConfig struct {
 	DefaultDB string `ini:"default_db"`
 	Password  string `ini:"password"`
 }
+
+type Log struct {
+	Level        string
+	Formatter    string
+	ReportCaller bool
+}

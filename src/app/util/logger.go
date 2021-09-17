@@ -7,6 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var appLogger *logrus.Logger
+
 func GetLogger() *logrus.Logger {
 
 	logfile, err := os.Create("./gin_http.log")
